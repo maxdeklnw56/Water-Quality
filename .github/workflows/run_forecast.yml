@@ -3,7 +3,7 @@ name: Run Water Quality Forecast
 on:
   schedule:
     # ตั้งเวลาให้รันทุกๆ 1 ชั่วโมง (สามารถปรับเปลี่ยนได้ตามต้องการ)
-    - cron: '0 * * * *'
+    - cron: '* * * * *'
   workflow_dispatch: # ทำให้เราสามารถกดปุ่มรันมือเองบนเว็บ GitHub ได้ตลอดเวลา
 
 jobs:

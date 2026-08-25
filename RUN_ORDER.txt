@@ -1,0 +1,19 @@
+RUN IN THIS ORDER
+
+1) Set THINGSPEAK_CHANNEL_ID, THINGSPEAK_READ_KEY, THINGSPEAK_WRITE_KEY
+2) pip install -r requirements_full.txt
+3) python 01_download_thingspeak.py
+4) python 02_clean_and_eda.py
+5) python 03_train_models_full.py
+6) python 05_make_report.py
+7) python 04_forecast_and_upload.py
+
+Output:
+- data/raw_data.csv
+- data/hourly_clean.csv
+- data/figures/
+- models/
+- results/regression_results.csv
+- results/turbidity_results.json
+- results/figures/
+- results/forecasting_report.pdf

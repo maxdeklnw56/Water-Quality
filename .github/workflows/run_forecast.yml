@@ -20,8 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --no-cache-dir pandas numpy requests statsmodels joblib scikit-learn
-
+          pip install --no-cache-dir --upgrade pip
+          pip install --no-cache-dir pandas numpy requests statsmodels joblib "scikit-learn>=1.5.0"
       - name: Run forecast and upload script
         env:
           THINGSPEAK_CHANNEL_ID: ${{ secrets.THINGSPEAK_CHANNEL_ID }}

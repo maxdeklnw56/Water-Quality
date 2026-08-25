@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Quality</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0B2027;
+    --surface:#0F2C33;
+    --surface2:#153B43;
+    --line:rgba(232,241,239,0.10);
+    --line-strong:rgba(232,241,239,0.18);
+    --text:#E8F1EF;
+    --text-dim:#8FADAF;
+    --text-faint:#5F8082;
+    --temp:#F2994A;
+    --ph:#4FD1C5;
+    --turb:#C9A66B;
+    --good:#6FCF97;
+    --warn:#E8A33D;
+    --bad:#E8615A;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    padding:20px 16px 60px;
+    margin:0;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  header{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px;
+  }
+  h1{font-family:'Space Grotesk',sans-serif;font-size:26px;margin:0;}
+  .status-pill{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    color:var(--text-dim);background:var(--surface);border:1px solid var(--line);
+    padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:7px;
+  }
+  .header-right{display:flex;align-items:center;gap:8px;}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+  .status-dot.live{background:var(--good);}
+  .status-dot.error{background:var(--bad);}
+  .logout-btn{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:7px 12px;cursor:pointer;transition:all .15s;
+  }
+  .logout-btn:hover{border-color:var(--bad);color:var(--bad);}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:26px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:relative;}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .card-label{font-size:12.5px;color:var(--text-dim);font-weight:500;}
+  .readout-value{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;display:flex;align-items:baseline;gap:5px;}
+  .readout-unit{font-size:13px;color:var(--text-dim);font-weight:400;}
+  .readout-time{font-size:11px;color:var(--text-faint);margin-top:8px;font-family:'JetBrains Mono',monospace;}
+
+  .range-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .range-title{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;}
+  .tabs{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;}
+  .tab{
+    padding:7px 13px;border-radius:8px;border:none;background:transparent;
+    color:var(--text-dim);font-size:12.5px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500;transition:all .15s;
+  }
+  .tab.active{background:var(--surface2);color:var(--text);}
+  .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 10px;margin-bottom:14px;}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .chart-head-left{display:flex;align-items:center;gap:9px;}
+  .chart-dot{width:9px;height:9px;border-radius:2px;}
+  .chart-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;}
+  .chart-stats{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);display:flex;gap:14px;}
+  .chart-canvas-wrap{height:210px;position:relative;}
+  footer{text-align:center;margin-top:28px;font-size:11px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- Connect / gate screen ---------- */
+  #gate{
+    position:fixed;inset:0;background:var(--bg);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .gate-box{
+    width:100%;max-width:400px;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);padding:28px 26px;
+  }
+  .gate-eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ph);margin:0 0 8px;
+  }
+  .gate-box h2{font-family:'Space Grotesk',sans-serif;font-size:20px;margin:0 0 6px;}
+  .gate-box p.desc{color:var(--text-dim);font-size:13px;line-height:1.6;margin:0 0 20px;}
+  .gate-field{margin-bottom:14px;}
+  .gate-field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:5px;font-family:'JetBrains Mono',monospace;}
+  .gate-field input{
+    width:100%;background:var(--bg);border:1px solid var(--line-strong);color:var(--text);
+    padding:11px 12px;border-radius:8px;font-size:13.5px;font-family:'JetBrains Mono',monospace;
+  }
+  .gate-field input:focus{outline:none;border-color:var(--ph);}
+  .gate-remember{display:flex;align-items:center;gap:8px;margin:4px 0 18px;font-size:12.5px;color:var(--text-dim);}
+  .gate-remember input{width:auto;}
+  .gate-btn{
+    width:100%;background:var(--ph);color:#082423;border:none;
+    padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
+    font-family:'Inter',sans-serif;transition:filter .15s;
+  }
+  .gate-btn:hover{filter:brightness(1.08);}
+  .gate-btn:disabled{opacity:.6;cursor:default;}
+  .gate-error{
+    background:rgba(232,97,90,0.1);border:1px solid rgba(232,97,90,0.3);color:var(--bad);
+    font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;line-height:1.5;
+  }
+  .gate-note{font-size:11px;color:var(--text-faint);margin-top:16px;line-height:1.6;}
+
+  #dashboard{display:none;}
+
+  .forecast-section{margin-top:24px;}
+  .forecast-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;margin:0 0 12px;}
+  .forecast-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:14px;}
+  .forecast-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+  .forecast-label{font-size:12px;color:var(--text-dim);margin-bottom:8px;}
+  .forecast-value{font-family:'JetBrains Mono',monospace;font-size:23px;font-weight:700;}
+  .forecast-sub{font-size:11px;color:var(--text-faint);margin-top:7px;line-height:1.5;}
+  .forecast-badge{display:inline-block;margin-top:8px;padding:5px 9px;border-radius:999px;font-size:11px;font-family:'JetBrains Mono',monospace;}
+  .forecast-badge.good{background:rgba(111,207,151,.12);color:var(--good);}
+  .forecast-badge.warn{background:rgba(232,163,61,.12);color:var(--warn);}
+  .forecast-badge.bad{background:rgba(232,97,90,.12);color:var(--bad);}
+  .forecast-note{font-size:11px;color:var(--text-faint);line-height:1.6;margin:4px 0 14px;}
+  .forecast-error{display:none;background:rgba(232,97,90,.08);border:1px solid rgba(232,97,90,.25);color:var(--bad);padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:14px;}
+
+</style>
+</head>
+<body>
+
+<!-- ============ CONNECT / GATE SCREEN ============ -->
+<div id="gate">
+  <div class="gate-box">
+    <p class="gate-eyebrow">Water Quality</p>
+    <h2>เชื่อมต่อข้อมูล Channel ThingSpeak ของคุณ</h2>
+    <p class="desc">กรอก Channel ID และ Read API Key ของ ThingSpeak เพื่อเข้าดูข้อมูลคุณภาพน้ำ</p>
+
+    <div class="gate-error" id="gateError"></div>
+
+    <div class="gate-field">
+      <label>Channel ID</label>
+      <input type="text" id="gateChannelId" placeholder="กรอก Channel ID" autocomplete="off">
+    </div>
+    <div class="gate-field">
+      <label>Read API Key</label>
+      <input type="password" id="gateApiKey" placeholder="Read API Key" autocomplete="off">
+    </div>
+    <label class="gate-remember">
+      <input type="checkbox" id="gateRemember" checked>
+      จดจำไว้ในเบราว์เซอร์นี้
+    </label>
+    <button class="gate-btn" id="gateSubmit">เชื่อมต่อ</button>
+
+    
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard">
+<div class="wrap">
+  <header>
+    <div>
+      <h1>สถานีเฝ้าระวังคุณภาพน้ำ</h1>
+      <p style="color:var(--text-dim);font-size:13px;margin:6px 0 0;">อุณหภูมิ · pH · ความขุ่น</p>
+    </div>
+    <div class="header-right">
+      <div class="status-pill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">กำลังเชื่อมต่อ...</span>
+      </div>
+      <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <div class="cards">
+    <div class="card" style="border-top:2px solid var(--temp)">
+      <div class="card-top"><span class="card-label">อุณหภูมิ</span></div>
+      <div class="readout-value"><span id="valTemp">--</span><span class="readout-unit">°C</span></div>
+      <div class="readout-time" id="timeTemp">รอข้อมูล...</div>
+    </div>
+    <div class="card" style="border-top:2px solid var(--ph)">
+      <div class="card-top"><span class="card-label">ค่า pH</span></div>
+      <div class="readout-value"><span id="valPh">--</span><span class="readout-unit">pH</span></div>
+      <div class="readout-time" id="timePh">รอข้อมูล...</div>
+    </div>
+    <div class="card" style="border-top:2px solid var(--turb)">
+      <div class="card-top"><span class="card-label">ความขุ่น</span></div>
+      <div class="readout-value"><span id="valTurb">--</span></div>
+      <div class="readout-time" id="timeTurb">รอข้อมูล...</div>
+    </div>
+  </div>
+
+  <!-- ============ FORECAST ============ -->
+  <section class="forecast-section">
+    <div class="forecast-title">พยากรณ์คุณภาพน้ำ · 1 ชั่วโมงข้างหน้า</div>
+    <p class="forecast-note">
+      ผลพยากรณ์อ่านจาก ThingSpeak Field 4–7 ที่สร้างโดย Python ML pipeline
+      โดย Field 6 คือความน่าจะเป็นที่น้ำจะขุ่น และ Field 7 คือผลจำแนก (1=ขุ่น, 0=ปกติ)
+    </p>
+    <div class="forecast-error" id="forecastError"></div>
+
+    <div class="forecast-grid">
+      <div class="forecast-card">
+        <div class="forecast-label">Forecast Temperature</div>
+        <div class="forecast-value"><span id="forecastTemp">--</span> °C</div>
+        <div class="forecast-sub" id="forecastTempTime">รอผลพยากรณ์...</div>
+      </div>
+
+      <div class="forecast-card">
+        <div class="forecast-label">Forecast pH</div>
+        <div class="forecast-value"><span id="forecastPh">--</span></div>
+        <div class="forecast-sub" id="forecastPhTime">รอผลพยากรณ์...</div>
+      </div>
+
+      <div class="forecast-card">
+        <div class="forecast-label">ความน่าจะเป็นที่จะขุ่น</div>
+        <div class="forecast-value"><span id="forecastTurbProb">--</span>%</div>
+        <div class="forecast-sub">Logistic Regression · Field 6</div>
+        <span class="forecast-badge" id="forecastTurbBadge">รอข้อมูล</span>
+      </div>
+
+      <div class="forecast-card">
+        <div class="forecast-label">สถานะที่คาดการณ์</div>
+        <div class="forecast-value" id="forecastTurbStatus">--</div>
+        <div class="forecast-sub">Field 7 · 1 = ขุ่น / 0 = ปกติ</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-head-left">
+          <span class="chart-dot" style="background:var(--warn)"></span>
+          <span class="chart-title">Probability ที่คาดว่าจะพบความขุ่น</span>
+        </div>
+        <div class="chart-stats"><span id="forecastProbTime">อัปเดต --</span></div>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="chartForecastProb"></canvas></div>
+    </div>
+  </section>
+
+  <div id="mainArea">
+    <div class="range-bar">
+      <span class="range-title">ข้อมูลย้อนหลัง</span>
+      <div class="tabs" id="rangeTabs">
+        <button class="tab active" data-days="1">1 วัน</button>
+        <button class="tab" data-days="3">3 วัน</button>
+        <button class="tab" data-days="7">7 วัน</button>
+        <button class="tab" data-days="15">15 วัน</button>
+        <button class="tab" data-days="30">30 วัน</button>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-head-left"><span class="chart-dot" style="background:var(--temp)"></span><span class="chart-title">อุณหภูมิ</span></div>
+        <div class="chart-stats"><span id="statTempMin">min --</span><span id="statTempAvg">avg --</span><span id="statTempMax">max --</span></div>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="chartTemp"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-head-left"><span class="chart-dot" style="background:var(--ph)"></span><span class="chart-title">ค่า pH</span></div>
+        <div class="chart-stats"><span id="statPhMin">min --</span><span id="statPhAvg">avg --</span><span id="statPhMax">max --</span></div>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="chartPh"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-head-left"><span class="chart-dot" style="background:var(--turb)"></span><span class="chart-title">ความขุ่น (สถานะ)</span></div>
+        <div class="chart-stats"></div>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="chartTurb"></canvas></div>
+    </div>
+  </div>
+
+  <footer>อัปเดตอัตโนมัติจาก ThingSpeak Dashboard</footer>
+</div>
+</div>
+
+<script>
+(function(){
+  const STORE_KEY = 'thingspeak-water-creds';
+  let channelId = '';
+  let apiKey = '';
+  let currentDays = 1;
+  let charts = {temp:null, ph:null, turb:null, forecastProb:null};
+  let pollTimer = null;
+
+  const $ = id => document.getElementById(id);
+
+  // ---------- Gate / connect flow ----------
+  function loadSavedCreds(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        const c = JSON.parse(raw);
+        return c && c.channelId && c.apiKey ? c : null;
+      }
+    }catch(e){ /* localStorage unavailable */ }
+    return null;
+  }
+
+  function saveCreds(cId, key){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify({channelId:cId, apiKey:key})); }
+    catch(e){ /* ignore - session-only */ }
+  }
+
+  function clearCreds(){
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  }
+
+  function showGateError(msg){
+    const el = $('gateError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideGateError(){ $('gateError').style.display = 'none'; }
+
+  // Verifies the credentials actually work before letting the user in.
+  async function tryConnect(cId, key){
+    const btn = $('gateSubmit');
+    btn.disabled = true;
+    btn.textContent = 'กำลังตรวจสอบ...';
+    hideGateError();
+    try{
+      const url = `https://api.thingspeak.com/channels/${encodeURIComponent(cId)}/feeds.json?api_key=${encodeURIComponent(key)}&results=1`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('http');
+      const data = await res.json();
+      if(!data || !data.channel){
+        throw new Error('invalid');
+      }
+      // success
+      channelId = cId;
+      apiKey = key;
+      if($('gateRemember').checked) saveCreds(cId, key);
+      $('gate').style.display = 'none';
+      $('dashboard').style.display = 'block';
+      startApp();
+    }catch(e){
+      showGateError('เชื่อมต่อไม่สำเร็จ — ตรวจสอบ Channel ID และ Read API Key อีกครั้ง (หรือ Channel ยังไม่ได้เปิด/ยังไม่ตั้งเป็น Private)');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = 'เชื่อมต่อ';
+    }
+  }
+
+  $('gateSubmit').addEventListener('click', ()=>{
+    const cId = $('gateChannelId').value.trim();
+    const key = $('gateApiKey').value.trim();
+    if(!cId || !key){ showGateError('กรุณากรอกทั้ง Channel ID และ Read API Key'); return; }
+    tryConnect(cId, key);
+  });
+  $('gateApiKey').addEventListener('keydown', e=>{ if(e.key==='Enter') $('gateSubmit').click(); });
+  $('gateChannelId').addEventListener('keydown', e=>{ if(e.key==='Enter') $('gateApiKey').focus(); });
+
+  $('logoutBtn').addEventListener('click', ()=>{
+    if(pollTimer) clearInterval(pollTimer);
+    clearCreds();
+    channelId = ''; apiKey = '';
+    $('gateChannelId').value = '';
+    $('gateApiKey').value = '';
+    hideGateError();
+    $('dashboard').style.display = 'none';
+    $('gate').style.display = 'flex';
+  });
+
+  // On load: try saved creds first, otherwise show the gate.
+  (function init(){
+    const saved = loadSavedCreds();
+    if(saved){
+      $('gateChannelId').value = saved.channelId;
+      $('gateApiKey').value = saved.apiKey;
+      tryConnect(saved.channelId, saved.apiKey);
+    }
+  })();
+
+  // ---------- Dashboard logic (unchanged, now uses channelId/apiKey vars) ----------
+  function setStatus(state, text){
+    const dot = $('statusDot');
+    const txt = $('statusText');
+    if(!dot || !txt) return;
+    dot.className = 'status-dot ' + (state || '');
+    txt.textContent = text;
+  }
+
+  function fmtTime(d){
+    return d.toLocaleTimeString('th-TH', {timeZone: 'Asia/Bangkok', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
+
+  async function fetchLatest(){
+    try{
+      const url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?api_key=${apiKey}&results=1`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      const feed = data.feeds && data.feeds[0];
+
+      if(!feed){ setStatus('error', 'ไม่พบข้อมูลล่าสุด'); return; }
+
+      setStatus('live', 'เชื่อมต่อสำเร็จ');
+
+      $('valTemp').textContent = feed.field1 || '--';
+      $('valPh').textContent = feed.field2 || '--';
+
+      let turbVal = feed.field3;
+      let turbText = '--';
+      if(turbVal === '0' || turbVal === 0) turbText = 'พบความขุ่น';
+      else if(turbVal === '1' || turbVal === 1) turbText = 'ปกติ';
+      $('valTurb').textContent = turbText;
+
+      const t = new Date(feed.created_at);
+      $('timeTemp').textContent = 'อัปเดต: ' + fmtTime(t);
+      $('timePh').textContent = 'อัปเดต: ' + fmtTime(t);
+      $('timeTurb').textContent = 'อัปเดต: ' + fmtTime(t);
+
+    }catch(e){
+      setStatus('error', 'เชื่อมต่อล้มเหลว');
+    }
+  }
+
+  async function loadHistory(days){
+    currentDays = days;
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', parseInt(b.dataset.days) === days));
+    try{
+      const url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?api_key=${apiKey}&days=${days}&results=8000`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      let feeds = data.feeds || [];
+
+      if(feeds.length > 400){
+        const step = Math.ceil(feeds.length / 400);
+        feeds = feeds.filter((_, i) => i % step === 0);
+      }
+
+      const labels = feeds.map(f => {
+        let d = new Date(f.created_at);
+        return d.toLocaleString('th-TH', {timeZone: 'Asia/Bangkok', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      });
+
+      const getValues = (fieldKey) => {
+        return feeds.map(f => {
+          if (!f[fieldKey]) return null;
+          let val = parseFloat(f[fieldKey]);
+          return isNaN(val) ? null : val;
+        });
+      };
+
+      renderChart('temp', 'chartTemp', labels, getValues('field1'), '#F2994A');
+      renderChart('ph', 'chartPh', labels, getValues('field2'), '#4FD1C5');
+      renderChart('turb', 'chartTurb', labels, getValues('field3'), '#C9A66B', true);
+
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+
+  function showForecastError(msg){
+    const el = $('forecastError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideForecastError(){
+    const el = $('forecastError');
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+
+  function forecastBadge(prob){
+    const badge = $('forecastTurbBadge');
+    badge.className = 'forecast-badge';
+    if(prob >= 0.70){
+      badge.classList.add('bad');
+      badge.textContent = 'เสี่ยงขุ่นสูง';
+    }else if(prob >= 0.50){
+      badge.classList.add('warn');
+      badge.textContent = 'มีโอกาสขุ่น';
+    }else{
+      badge.classList.add('good');
+      badge.textContent = 'โอกาสขุ่นต่ำ';
+    }
+  }
+
+  function renderForecastProbability(labels, values){
+    const ctx = $('chartForecastProb').getContext('2d');
+    if(charts.forecastProb) charts.forecastProb.destroy();
+
+    charts.forecastProb = new Chart(ctx,{
+      type:'line',
+      data:{
+        labels,
+        datasets:[{
+          data:values,
+          borderColor:'#E8A33D',
+          backgroundColor:'#E8A33D22',
+          borderWidth:2,
+          pointRadius:0,
+          pointHoverRadius:4,
+          fill:true,
+          tension:.15,
+          spanGaps:true
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        interaction:{intersect:false,mode:'index'},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label:c=>' ความน่าจะเป็น: '+(Number(c.parsed.y)*100).toFixed(1)+'%'
+            }
+          }
+        },
+        scales:{
+          x:{
+            grid:{color:'rgba(232,241,239,0.06)'},
+            ticks:{color:'#8FADAF',font:{family:'JetBrains Mono',size:10},maxTicksLimit:8}
+          },
+          y:{
+            min:0,max:1,
+            grid:{color:'rgba(232,241,239,0.06)'},
+            ticks:{
+              color:'#8FADAF',
+              font:{family:'JetBrains Mono',size:10},
+              callback:value=>(value*100)+'%'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async function loadForecast(){
+    try{
+      hideForecastError();
+      $('forecastTemp').textContent = '...';
+      $('forecastPh').textContent = '...';
+      $('forecastTurbProb').textContent = '...';
+      
+      // ตอนทดสอบในเครื่อง ให้ใช้ http://127.0.0.1:5000/api/forecast
+      // หากนำ API ขึ้นออนไลน์แล้ว (เช่นบน Render) ให้เปลี่ยน URL นี้เป็นของจริง
+      const apiUrl = 'https://water-quality-f5d4.onrender.com/api/forecast';
+
+      const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_id: channelId, read_key: apiKey })
+});
+
+const responseData = await res.json();
+// เช็ค Error จากตัวแปร status ที่ส่งมาจาก app.py
+if (responseData.status !== 'success') {
+    throw new Error(responseData.error || 'HTTP ' + res.status);
+}
+
+      const data = responseData.data;
+      const t = new Date(data.timestamp);
+
+      // อัปเดตข้อมูลบนการ์ดพยากรณ์
+      $('forecastTemp').textContent = data.temperature.toFixed(2);
+      $('forecastPh').textContent = data.ph.toFixed(2);
+      $('forecastTurbProb').textContent = (data.turbidity_prob * 100).toFixed(1);
+
+      const updateText = 'คำนวณสดเมื่อ : ' + fmtTime(new Date());
+      $('forecastTempTime').textContent = updateText;
+      $('forecastPhTime').textContent = updateText;
+      $('forecastProbTime').textContent = 'ประวัติย้อนหลัง 24 ชม.ล่าสุด';
+
+      forecastBadge(data.turbidity_prob);
+
+      if(data.turbidity_pred === 1){
+        $('forecastTurbStatus').textContent = 'มีโอกาสขุ่น';
+      }else if(data.turbidity_pred === 0){
+        $('forecastTurbStatus').textContent = 'ปกติ';
+      }else{
+        $('forecastTurbStatus').textContent = '--';
+      }
+
+      // นำประวัติความน่าจะเป็นมาพล็อตลงกราฟ
+      const valid = data.history_probs.map(x => {
+        return {
+          label: new Date(x.time).toLocaleString('th-TH',{
+            timeZone:'Asia/Bangkok', month:'numeric', day:'numeric',
+            hour:'2-digit', minute:'2-digit'
+          }),
+          value: x.prob
+        };
+      });
+      renderForecastProbability(valid.map(x=>x.label), valid.map(x=>x.value));
+
+    }catch(e){
+      console.error('Forecast API error:', e);
+      showForecastError('ระบบพยากรณ์: ' + e.message);
+    }
+  }
+  function renderChart(key, canvasId, labels, values, color, isTurbidity = false){
+    const clean = values.filter(v => v !== null && !isNaN(v));
+    const cap = key[0].toUpperCase() + key.slice(1);
+
+    if (key !== 'turb') {
+      if(clean.length){
+        $('stat'+cap+'Min').textContent = 'min ' + Math.min(...clean).toFixed(2);
+        $('stat'+cap+'Max').textContent = 'max ' + Math.max(...clean).toFixed(2);
+        $('stat'+cap+'Avg').textContent = 'avg ' + (clean.reduce((a,b)=>a+b,0)/clean.length).toFixed(2);
+      } else {
+        $('stat'+cap+'Min').textContent = 'min --';
+        $('stat'+cap+'Max').textContent = 'max --';
+        $('stat'+cap+'Avg').textContent = 'avg --';
+      }
+    }
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if(charts[key]) charts[key].destroy();
+
+    let yConfig = {
+      grid: { color: 'rgba(232,241,239,0.06)' },
+      ticks: { color: '#8FADAF', font: { family: 'JetBrains Mono', size: 10 } }
+    };
+
+    if(isTurbidity) {
+      yConfig.ticks.stepSize = 1;
+      yConfig.ticks.callback = function(value) {
+        if(value === 0) return 'พบความขุ่น';
+        if(value === 1) return 'ปกติ';
+        return '';
+      };
+      yConfig.min = -0.1;
+      yConfig.max = 1.1;
+    }
+
+    charts[key] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          borderColor: color,
+          backgroundColor: color + '22',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          tension: 0,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: isTurbidity ? {
+              label: function(context) {
+                let val = context.parsed.y;
+                if(val === 0) return ' สถานะ: พบความขุ่น';
+                if(val === 1) return ' สถานะ: ปกติ';
+                return ' สถานะ: --';
+              }
+            } : {}
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(232,241,239,0.06)' },
+            ticks: { color: '#8FADAF', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 }
+          },
+          y: yConfig
+        }
+      }
+    });
+  }
+
+  function startApp(){
+    document.querySelectorAll('.tab').forEach(b => {
+      b.addEventListener('click', () => loadHistory(parseInt(b.dataset.days)));
+    });
+    fetchLatest();
+    loadHistory(currentDays);
+    loadForecast();
+    if(pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(()=>{
+      fetchLatest();
+      loadForecast();
+    }, 30000);
+  }
+})();
+</script>
+</body>
+</html>

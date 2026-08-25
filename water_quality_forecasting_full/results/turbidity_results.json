@@ -1,0 +1,11 @@
+{
+  "Accuracy": 1.0,
+  "Precision": 0.0,
+  "Recall": 0.0,
+  "F1": 0.0,
+  "ConfusionMatrix": [
+    [
+      1
+    ]
+  ]
+}

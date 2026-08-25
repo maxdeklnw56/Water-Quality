@@ -1,0 +1,10 @@
+pandas
+numpy
+requests
+matplotlib
+scikit-learn
+statsmodels
+joblib
+Flask==3.0.0
+Flask-Cors==4.0.0
+gunicorn==21.2.0

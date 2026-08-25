@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --no-cache-dir pandas numpy requests statsmodels joblib scikit-learn==1.9.0
+          pip install --no-cache-dir pandas numpy requests statsmodels joblib scikit-learn
 
       - name: Run forecast and upload script
         env:

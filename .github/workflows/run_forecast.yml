@@ -1,0 +1,31 @@
+name: Run Water Quality Forecast
+
+on:
+  schedule:
+    # ตั้งเวลาให้รันทุกๆ 1 ชั่วโมง (สามารถปรับเปลี่ยนได้ตามต้องการ)
+    - cron: '0 * * * *'
+  workflow_dispatch: # ทำให้เราสามารถกดปุ่มรันมือเองบนเว็บ GitHub ได้ตลอดเวลา
+
+jobs:
+  run-python-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir pandas numpy requests statsmodels joblib scikit-learn
+
+      - name: Run forecast and upload script
+        env:
+          THINGSPEAK_CHANNEL_ID: ${{ secrets.THINGSPEAK_CHANNEL_ID }}
+          THINGSPEAK_READ_KEY: ${{ secrets.THINGSPEAK_READ_KEY }}
+          THINGSPEAK_WRITE_KEY: ${{ secrets.THINGSPEAK_WRITE_KEY }}
+        run: |
+          python 04_forecast_and_upload.py
